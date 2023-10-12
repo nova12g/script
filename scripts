@@ -1,0 +1,160 @@
+-- Create the GUI
+local gui = Instance.new("ScreenGui")
+local frame = Instance.new("Frame")
+local textBox = Instance.new("TextBox")
+local teleportButton = Instance.new("TextButton")
+local viewButton = Instance.new("TextButton")
+
+gui.Name = "TeleportGui"
+frame.Name = "MainFrame"
+textBox.Name = "UsernameBox"
+teleportButton.Name = "TeleportButton"
+viewButton.Name = "ViewButton"
+
+frame.Size = UDim2.new(0, 200, 0, 150)
+textBox.Size = UDim2.new(0, 200, 0, 50)
+teleportButton.Size = UDim2.new(0, 200, 0, 50)
+viewButton.Size = UDim2.new(0, 200, 0, 50)
+
+textBox.Position = UDim2.new(0, 0, 0, 0)
+teleportButton.Position = UDim2.new(0, 0, 0, 50)
+viewButton.Position = UDim2.new(0, 0, 0, 100)
+
+textBox.PlaceholderText = "Enter username..."
+teleportButton.Text = "Teleport"
+viewButton.Text = "View"
+
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Set frame color to black
+textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set text box color to white
+teleportButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set button color to white
+viewButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Set button color to white
+
+frame.BorderSizePixel = 1 -- Add a border to the frame
+frame.BorderColor3 = Color3.fromRGB(255, 255, 255) -- Set border color to white
+
+frame.Parent = gui
+textBox.Parent = frame
+teleportButton.Parent = frame
+viewButton.Parent = frame
+
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Make the GUI draggable
+local dragger = Instance.new("UIAspectRatioConstraint")
+dragger.AspectRatio = frame.Size.X.Offset / frame.Size.Y.Offset
+dragger.Parent = frame
+
+local inputService = game:GetService("UserInputService")
+
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                               startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+inputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Auto-complete function for text box
+textBox.FocusLost:Connect(function()
+    local usernameInput = textBox.Text
+    local players = game:GetService("Players"):GetPlayers()
+
+    for _, player in ipairs(players) do
+        if string.sub(player.Name, 1, #usernameInput):lower() == usernameInput:lower() then
+            textBox.Text = player.Name -- Auto-complete the username in the text box when focus is lost
+            return -- Exit function early as we've auto-completed the username already
+        end
+    end
+
+    print("USER NOT FOUND") -- Replace with a proper error message display in your game
+end)
+
+-- Teleport function
+local function teleportToPlayer()
+    local usernameInput = textBox.Text
+    local players = game:GetService("Players"):GetPlayers()
+
+    for _, player in ipairs(players) do
+        if string.sub(player.Name, 1, #usernameInput):lower() == usernameInput:lower() then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame =
+                        humanoidRootPart.CFrame * CFrame.new(0, 3, 0) -- Teleport above the player to avoid overlapping
+                    return -- Exit function early as we've teleported already 
+                end 
+            end 
+        end 
+    end 
+
+    print("USER NOT FOUND") -- Replace with a proper error message display in your game
+end 
+
+-- View function
+local isViewingPlayer = false
+
+local function viewPlayer()
+    local usernameInput = textBox.Text
+    local players = game:GetService("Players"):GetPlayers()
+
+    for _, player in ipairs(players) do
+        if string.sub(player.Name, 1, #usernameInput):lower() == usernameInput:lower() then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    if isViewingPlayer then
+                        game.Workspace.CurrentCamera.CameraSubject =
+                            game.Players.LocalPlayer.Character.Humanoid -- Reset camera to own character
+
+                        isViewingPlayer = false -- Reset viewing state
+
+                        return -- Exit function early as we've reset the camera and viewing state already
+                    else
+                        game.Workspace.CurrentCamera.CameraSubject =
+                            player.Character.Humanoid -- Set camera to other player's character
+
+                        isViewingPlayer = true -- Update viewing state
+
+                        return -- Exit function early as we've set the camera and viewing state already
+                    end 
+                end 
+            end 
+        end 
+    end 
+
+    print("USER NOT FOUND") -- Replace with a proper error message display in your game
+end 
+
+teleportButton.MouseButton1Click:Connect(teleportToPlayer)
+viewButton.MouseButton1Click:Connect(viewPlayer)
